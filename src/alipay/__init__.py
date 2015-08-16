@@ -30,13 +30,15 @@ def encode_dict(params):
 
 class Alipay(object):
 
+    TEST_GATEWAY_URL = 'https://mapi.alipay.net/gateway.do'
     GATEWAY_URL = 'https://mapi.alipay.com/gateway.do'
 
+    TEST_NOTIFY_GATEWAY_URL = 'https://mapi.alipay.net/gateway.do?service=notify_verify&partner=%s&notify_id=%s'
     NOTIFY_GATEWAY_URL = 'https://mapi.alipay.com/gateway.do?service=notify_verify&partner=%s&notify_id=%s'
     sign_tuple = ('sign_type', 'MD5', 'MD5')
     sign_key = False
 
-    def __init__(self, pid, key, seller_email=None, seller_id=None):
+    def __init__(self, pid, key, seller_email=None, seller_id=None, is_testing=False):
         self.key = key
         self.pid = pid
         self.default_params = {'_input_charset': 'utf-8',
@@ -50,6 +52,7 @@ class Alipay(object):
         else:
             raise ParameterValueError(
                 "seller_email and seller_id must have one.")
+        self._is_testing = is_testing;
 
     def _generate_md5_sign(self, params):
         src = '&'.join(['%s=%s' % (key, value) for key,
@@ -76,7 +79,10 @@ class Alipay(object):
         params.update({signkey: signvalue,
                        'sign': signmethod(params)})
 
-        return '%s?%s' % (self.GATEWAY_URL, urlencode(encode_dict(params)))
+        if self._is_testing:
+            return '%s?%s' % (self.TEST_GATEWAY_URL, urlencode(encode_dict(params)))
+        else:
+            return '%s?%s' % (self.GATEWAY_URL, urlencode(encode_dict(params)))
 
     def create_direct_pay_by_user_url(self, **kw):
         '''即时到帐'''
@@ -152,7 +158,11 @@ class Alipay(object):
             return False
 
     def check_notify_remotely(self, **kw):
-        remote_result = requests.get(self.NOTIFY_GATEWAY_URL % (self.pid, kw['notify_id']),
+        if self._is_testing:
+            remote_result = requests.get(self.TEST_NOTIFY_GATEWAY_URL % (self.pid, kw['notify_id']),
+                                     headers={'connection': 'close'}).text
+        else:
+            remote_result = requests.get(self.NOTIFY_GATEWAY_URL % (self.pid, kw['notify_id']),
                                      headers={'connection': 'close'}).text
         return remote_result == 'true'
 
