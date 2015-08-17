@@ -42,8 +42,7 @@ class Alipay(object):
         self.key = key
         self.pid = pid
         self.default_params = {'_input_charset': 'utf-8',
-                               'partner': pid,
-                               'payment_type': '1'}
+                               'partner': pid}
         # 优先使用 seller_id （与接口端的行为一致）
         if seller_id is not None:
             self.default_params['seller_id'] = seller_id
@@ -83,6 +82,21 @@ class Alipay(object):
             return '%s?%s' % (self.TEST_GATEWAY_URL, urlencode(encode_dict(params)))
         else:
             return '%s?%s' % (self.GATEWAY_URL, urlencode(encode_dict(params)))
+
+    def create_forex_trade_url(self, **kw):
+        '''forex trade'''
+        self._check_params(kw, ['out_trade_no', 'subject',
+            'notify_url', 'currency'])
+
+        if not kw.get('total_fee') and not kw.get('rmb_fee'):
+            raise ParameterValueError('total_fee or rmb_fee are not set')
+
+        if kw.get('total_fee') and kw.get('rmb_fee'):
+            raise ParameterValueError('total_fee and rmb_fee cannot be set at the same time')
+
+        url = self._build_url('create_forex_trade', **kw)
+        return url
+
 
     def create_direct_pay_by_user_url(self, **kw):
         '''即时到帐'''
